@@ -1,0 +1,3 @@
+Fix - Rotating a ship does not show until moving squares
+Highlight squares red if full ship gets destroyed
+Enhance AI to shoot adjacent squares after hit until ship is destroyed
