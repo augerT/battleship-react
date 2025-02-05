@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+.board-container{ 
+  @apply flex;
+  @apply flex-col; 
+  @apply items-center;
+}
+
+.square {
+  @apply w-8;
+  @apply h-8;
+  @apply border;
+  @apply border-gray-400;
+  @apply bg-white;
+  @apply m-0;
+  @apply p-0;
+  @apply text-center;
+  @apply float-left;
+  @apply text-lg;
+  @apply font-bold;
+}
+
+.player-text {
+  @apply text-xl;
+  @apply font-bold;
+  @apply mb-2;
+}
+
+.game-container {
+  @apply flex flex-col items-center p-4;
+}
+
+.boards-container {
+  @apply flex items-start gap-8;
+}
+
+.board-grid {
+  @apply grid grid-cols-10 gap-0 border border-gray-400;
+}
+
+.grid-square {
+  @apply w-8 h-8 border border-gray-400 flex items-center justify-center;
+}
+
+.separator {
+  @apply flex flex-col items-center self-stretch justify-center;
+}
+
+.separator-line {
+  @apply w-px h-full bg-gray-300;
+}
+
+.separator-text {
+  @apply my-4 text-gray-500 font-medium;
+}
+
+.game-status {
+  @apply mt-8 text-center font-medium;
+}
+
+.grid-square.preview {
+  @apply bg-gray-200;
+}
+
+.game {
+  display: flex;
+  flex-direction: row;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: sans-serif;
+  margin: 20px;
+  padding: 0;
+}
+
+h1 {
+  margin-top: 0;
+  font-size: 22px;
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 20px;
+}
+
+h3 {
+  margin-top: 0;
+  font-size: 18px;
+}
+
+h4 {
+  margin-top: 0;
+  font-size: 16px;
+}
+
+h5 {
+  margin-top: 0;
+  font-size: 14px;
+}
+
+h6 {
+  margin-top: 0;
+  font-size: 12px;
+}
+
+code {
+  font-size: 1.2em;
+}
+
+ul {
+  padding-inline-start: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: sans-serif;
+  margin: 20px;
+  padding: 0;
+}
+
+
+.board-row:after {
+  clear: both;
+  content: "";
+  display: table;
+}
+
+.status {
+  margin-bottom: 10px;
+}
+
+.game-info {
+  margin-left: 20px;
+}
+
+.swap-order {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+  margin-left: 30px;
+}
+
+.square.winning {
+  background-color: red;
+  /* or any highlight color you prefer */
+}
