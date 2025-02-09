@@ -83,6 +83,12 @@ export default function Game() {
   const [currentHoverIndex, setCurrentHoverIndex] = useState(null);
   const [isVerticalPlacement, setIsVerticalPlacement] = useState(false);
   const [currentShip, setCurrentShip] = useState(ships[0]);
+  const [enemyAI, setEnemyAI] = useState({ 
+    lastHit: null,
+    hitStack: [],
+    direction: null,
+    successfulDirection: null
+  })
 
   // useEffects
   useEffect(() => {
@@ -270,10 +276,64 @@ export default function Game() {
   // Game Helper Functions
   const handleEnemyTurn = () => {
     const newPlayerSquares = [...playerSquares];
+    const newEnemyAI = { ...enemyAI };
     let validMove = false;
-    let hit = false;
 
     while (!validMove) {
+
+      if(enemyAI.lastHit && !enemyAI.successfulDirection) {
+        const validAdjacentSquares = [];
+        const row = Math.floor(enemyAI.lastHit / 10);
+        const col = enemyAI.lastHit % 10;
+        
+        // Check left square if not on left edge
+        if (col > 0) {
+          const leftIndex = enemyAI.lastHit - 1;
+          if (newPlayerSquares[leftIndex] !== 'X' && newPlayerSquares[leftIndex] !== 'O') {
+            validAdjacentSquares.push({ index: leftIndex, direction: 'left' });
+          }
+        }
+        
+        // Check right square if not on right edge
+        if (col < 9) {
+          const rightIndex = enemyAI.lastHit + 1;
+          if (newPlayerSquares[rightIndex] !== 'X' && newPlayerSquares[rightIndex] !== 'O') {
+            validAdjacentSquares.push({ index: rightIndex, direction: 'right' });
+          }
+        }
+        
+        // Check up square if not on top edge
+        if (row > 0) {
+          const upIndex = enemyAI.lastHit - 10;
+          if (newPlayerSquares[upIndex] !== 'X' && newPlayerSquares[upIndex] !== 'O') {
+            validAdjacentSquares.push({ index: upIndex, direction: 'up' });
+          }
+        }
+        
+        // Check down square if not on bottom edge
+        if (row < 9) {
+          const downIndex = enemyAI.lastHit + 10;
+          if (newPlayerSquares[downIndex] !== 'X' && newPlayerSquares[downIndex] !== 'O') {
+            validAdjacentSquares.push({ index: downIndex, direction: 'down' });
+          }
+        }
+
+        // If we have valid adjacent squares, choose one randomly
+        if (validAdjacentSquares.length > 0) {
+          const randomChoice = validAdjacentSquares[Math.floor(Math.random() * validAdjacentSquares.length)];
+          if (ships.find(ship => ship.value === newPlayerSquares[randomChoice.index])) {
+            newPlayerSquares[randomChoice.index] = 'X';
+            newEnemyAI.lastHit = randomChoice.index;
+            newEnemyAI.successfulDirection = randomChoice.direction;
+            newEnemyAI.hitStack.push(randomChoice.index);
+          } else {
+            newPlayerSquares[randomChoice.index] = 'O';
+          }
+          validMove = true;
+          continue;
+        }
+      }
+
       const randomSquare = Math.floor(Math.random() * 100);
       if (
         newPlayerSquares[randomSquare] !== "X" &&
@@ -283,7 +343,7 @@ export default function Game() {
           ships.find((ship) => ship.value === newPlayerSquares[randomSquare])
         ) {
           newPlayerSquares[randomSquare] = "X";
-          hit = true;
+          newEnemyAI.lastHit = randomSquare;
         } else {
           newPlayerSquares[randomSquare] = "O";
         }
@@ -291,6 +351,7 @@ export default function Game() {
       }
     }
 
+    setEnemyAI(newEnemyAI);
     setPlayerSquares(newPlayerSquares);
     setGameState(GAME_STATES.PLAYER_TURN);
   };
