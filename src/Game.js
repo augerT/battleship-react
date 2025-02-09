@@ -126,27 +126,7 @@ export default function Game() {
 
     // Enemy's turn
     setTimeout(() => {
-      const newPlayerSquares = [...playerSquares];
-      let validMove = false;
-      let hit = false;
-
-      while (!validMove) {
-        const randomSquare = Math.floor(Math.random() * 100);
-        if (newPlayerSquares[randomSquare] !== 'X' && 
-            newPlayerSquares[randomSquare] !== 'O') {
-          if (ships.find(ship => ship.value === newPlayerSquares[randomSquare])) {
-            newPlayerSquares[randomSquare] = 'X';
-            hit = true;
-          } else {
-            newPlayerSquares[randomSquare] = 'O';
-          }
-          validMove = true;
-        }
-      }
-      
-      setLastShotData({hit, isPlayerShot: false})
-      setPlayerSquares(newPlayerSquares);
-      setGameState(GAME_STATES.PLAYER_TURN);
+      handleEnemyTurn();
     }, 2000);
   };
 
@@ -259,7 +239,7 @@ export default function Game() {
     setPlayerSquares(newSquares);
   };
 
-  // UI Helper Function
+  // UI Helper Functions
   const getGameStatusText = () => {
     switch (gameState) {
       case GAME_STATES.PLACING_SHIPS:
@@ -275,29 +255,34 @@ export default function Game() {
     }
   };
 
-  const getShotStatusText = () => {
-    if(gameState !== GAME_STATES.ENEMY_TURN && gameState !== GAME_STATES.PLAYER_TURN) {
-      return '';
+  // Game Helper Functions
+  const handleEnemyTurn = () => {
+    const newPlayerSquares = [...playerSquares];
+    let validMove = false;
+    let hit = false;
+
+    while (!validMove) {
+      const randomSquare = Math.floor(Math.random() * 100);
+      if (
+        newPlayerSquares[randomSquare] !== "X" &&
+        newPlayerSquares[randomSquare] !== "O"
+      ) {
+        if (
+          ships.find((ship) => ship.value === newPlayerSquares[randomSquare])
+        ) {
+          newPlayerSquares[randomSquare] = "X";
+          hit = true;
+        } else {
+          newPlayerSquares[randomSquare] = "O";
+        }
+        validMove = true;
+      }
     }
 
-    if(!lastShotData) {
-      return '';
-    }
-
-    if(lastShotData.hit) {
-      if(lastShotData.isPlayerShot) {
-        return 'BOOM! Your shot hit a ship!'
-      } else {
-        return `BOOM! The enemy hit your ship!`
-      }
-    } else {
-      if(lastShotData.isPlayerShot) {
-        return 'SPLOOSH! Your shot missed!'
-      } else {
-        return 'SPLOOSH! The enemy missed!'
-      }
-    }
-  }
+    setLastShotData({ hit, isPlayerShot: false });
+    setPlayerSquares(newPlayerSquares);
+    setGameState(GAME_STATES.PLAYER_TURN);
+  };
 
   return (
     <div className="game-container">
@@ -330,7 +315,6 @@ export default function Game() {
         </div>
       </div>
       <div className="game-status">{getGameStatusText()}</div>
-      <div className="game-status">{getShotStatusText()}</div>
     </div>
   );
 }
