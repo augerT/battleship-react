@@ -10,11 +10,11 @@ const GAME_STATES = {
 };
 
 const SHIPS = [
-  { name: "Carrier", value:"CA", size: 5, placed: false },
-  { name: "Battleship", value: "B", size: 4, placed: false },
-  { name: "Cruiser", size: 3, value: "CR", placed: false },
-  { name: "Submarine", size: 3, value: "S", placed: false },
-  { name: "Destroyer", size: 2, value: "D", placed: false },
+  { name: "Carrier", value:"CA", size: 5, placed: false, destroyed: false },
+  { name: "Battleship", value: "B", size: 4, placed: false, destroyed: false },
+  { name: "Cruiser", size: 3, value: "CR", placed: false, destroyed: false },
+  { name: "Submarine", size: 3, value: "S", placed: false, destroyed: false },
+  { name: "Destroyer", size: 2, value: "D", placed: false, destroyed: false },
 ];
 
 export default function Game() {
@@ -223,6 +223,7 @@ export default function Game() {
       }
     }
 
+    let previewSquareIndicies = [];
     // Add preview squares
     for (let j = 0; j < currentShip.size; j++) {
       const previewIndex = startIndex + (j * increment);
@@ -232,9 +233,16 @@ export default function Game() {
         )
       ) {
         newSquares[previewIndex] = `${currentShip.value}-preview`;
+        previewSquareIndicies.push(previewIndex);
       }
     }
 
+
+    if(previewSquareIndicies.length != currentShip.size) {
+      previewSquareIndicies.forEach(i => {
+        newSquares[i] = `${currentShip.value}-preview-invalid`
+      })
+    }
     setCurrentHoverIndex(squareIndex);
     setPlayerSquares(newSquares);
   };

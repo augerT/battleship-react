@@ -65,6 +65,10 @@
   @apply bg-gray-200;
 }
 
+.grid-square.preview.invalid {
+  @apply bg-red-400 bg-opacity-50;
+}
+
 .game {
   display: flex;
   flex-direction: row;
