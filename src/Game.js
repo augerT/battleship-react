@@ -18,7 +18,8 @@ const SHIPS = [
 ];
 
 export default function Game() {
-  // Board states
+
+  // Setup enemy squares, choose ship position randomly
   const [enemySquares, setEnemySquares] = useState(() => {
     const squares = Array(100).fill(null);
 
@@ -75,13 +76,13 @@ export default function Game() {
     return squares;
   });
 
-  // State Variables
-  const [playerSquares, setPlayerSquares] = useState(Array(100).fill(null));
+  // Other States
   const [gameState, setGameState] = useState(GAME_STATES.PLACING_SHIPS);
+  const [playerSquares, setPlayerSquares] = useState(Array(100).fill(null));
   const [ships, setShips] = useState(SHIPS);
+  const [currentHoverIndex, setCurrentHoverIndex] = useState(null);
   const [isVerticalPlacement, setIsVerticalPlacement] = useState(false);
   const [currentShip, setCurrentShip] = useState(ships[0]);
-  const [lastShotData, setLastShotData] = useState(null);
 
   // useEffects
   useEffect(() => {
@@ -92,6 +93,12 @@ export default function Game() {
     window.addEventListener("keydown", handleRotateShip);
     return () => window.removeEventListener("keydown", handleRotateShip);
   }, [gameState]);
+
+  useEffect(() => {
+    if (currentHoverIndex && gameState === GAME_STATES.PLACING_SHIPS) {
+      previewPlayerShip(currentHoverIndex);
+    }
+  }, [isVerticalPlacement])
 
   // Event Handlers
   const handleRotateShip = (event) => {
@@ -111,16 +118,13 @@ export default function Game() {
     }
 
     const newEnemySquares = [...enemySquares];
-    let hit = false;
     // Check if hit or miss
     if (enemySquares[i] !== null) {
       newEnemySquares[i] = 'X';
-      hit = true;
     } else {
       newEnemySquares[i] = 'O';
     }
 
-    setLastShotData({hit, isPlayerShot: true})
     setEnemySquares(newEnemySquares);
     setGameState(GAME_STATES.ENEMY_TURN);
 
@@ -148,7 +152,7 @@ export default function Game() {
     // If no preview squares or invalid number of squares, return
     if (previewSquares.length !== currentShip.size) {
       return;
-    } 
+    }
 
     // Check if any preview square overlaps with a placed ship
     if (
@@ -183,7 +187,9 @@ export default function Game() {
   };
 
   const previewPlayerShip = (squareIndex) => {
-    if (gameState !== GAME_STATES.PLACING_SHIPS) return;
+    if (gameState !== GAME_STATES.PLACING_SHIPS) {
+      return;
+    } 
 
     const newSquares = [...playerSquares];
 
@@ -194,39 +200,44 @@ export default function Game() {
       }
     }
 
-    // Calculate indices and adjustments based on orientation
-    const increment = isVerticalPlacement ? 10 : 1; // Move down vs move right
-    const boundary = isVerticalPlacement
-      ? 100
-      : (Math.floor(squareIndex / 10) + 1) * 10; // Bottom of board vs end of row
-
-    // Check if ship would go past boundary
+    const increment = isVerticalPlacement ? 10 : 1;
     let startIndex = squareIndex;
-    const endIndex = startIndex + (currentShip.size - 1) * increment;
+    const row = Math.floor(squareIndex / 10);
+    const col = squareIndex % 10;
 
-    if (endIndex >= boundary) {
-      // Move start position back to fit within boundary
-      startIndex = boundary - currentShip.size * increment;
+    if (isVerticalPlacement) {
+      // Vertical placement: Check if ship goes past bottom
+      if (row + currentShip.size > 10) {
+        startIndex = squareIndex - ((row + currentShip.size - 10) * 10);
+      }
+    } else {
+      // Horizontal placement: Check if ship goes past right edge
+      if (col + currentShip.size > 10) {
+        startIndex = squareIndex - (col + currentShip.size - 10);
+      }
     }
 
     // Add preview squares
     for (let j = 0; j < currentShip.size; j++) {
-      const squareIndex = startIndex + j * increment;
+      const previewIndex = startIndex + (j * increment);
       if (
         !ships.find(
-          (ship) => ship.placed && ship.value === newSquares[squareIndex]
+          (ship) => ship.placed && ship.value === newSquares[previewIndex]
         )
       ) {
-        newSquares[squareIndex] = `${currentShip.value}-preview`;
+        newSquares[previewIndex] = `${currentShip.value}-preview`;
       }
     }
 
+    setCurrentHoverIndex(squareIndex);
     setPlayerSquares(newSquares);
   };
 
   const clearPlayerShipPreviews = () => {
-    if (gameState !== GAME_STATES.PLACING_SHIPS) return;
-
+    if (gameState !== GAME_STATES.PLACING_SHIPS) {
+      return;
+    }
+    
     // Clear any temporary ship placement previews, keeping only placed ships
     const newSquares = [...playerSquares];
     for (let i = 0; i < newSquares.length; i++) {
@@ -236,6 +247,7 @@ export default function Game() {
       }
     }
 
+    setCurrentHoverIndex(null);
     setPlayerSquares(newSquares);
   };
 
@@ -279,7 +291,6 @@ export default function Game() {
       }
     }
 
-    setLastShotData({ hit, isPlayerShot: false });
     setPlayerSquares(newPlayerSquares);
     setGameState(GAME_STATES.PLAYER_TURN);
   };
