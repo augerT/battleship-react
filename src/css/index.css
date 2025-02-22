@@ -132,29 +132,6 @@ body {
   padding: 0;
 }
 
-
-.board-row:after {
-  clear: both;
-  content: "";
-  display: table;
-}
-
 .status {
   margin-bottom: 10px;
-}
-
-.game-info {
-  margin-left: 20px;
-}
-
-.swap-order {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 10px;
-  margin-left: 30px;
-}
-
-.square.winning {
-  background-color: red;
-  /* or any highlight color you prefer */
 }
