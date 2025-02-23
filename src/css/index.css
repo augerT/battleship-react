@@ -45,6 +45,14 @@
   @apply w-8 h-8 border border-gray-400 flex items-center justify-center;
 }
 
+.grid-square.destroyed-ship {
+  @apply bg-red-500;
+}
+
+.grid-square.cheat-mode-ship {
+  @apply bg-blue-200;
+}
+
 .separator {
   @apply flex flex-col items-center self-stretch justify-center;
 }

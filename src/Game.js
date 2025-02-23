@@ -18,7 +18,6 @@ const SHIPS = [
 ];
 
 export default function Game() {
-
   // Setup enemy squares, choose ship position randomly
   const [enemySquares, setEnemySquares] = useState(() => {
     const squares = Array(100).fill(null);
@@ -84,11 +83,13 @@ export default function Game() {
   const [isVerticalPlacement, setIsVerticalPlacement] = useState(false);
   const [currentShip, setCurrentShip] = useState(ships[0]);
   const [enemyAI, setEnemyAI] = useState({ 
-    lastHit: null,
+    firstHit: null,
     hitStack: [],
-    direction: null,
-    successfulDirection: null
-  })
+    currentDirection: null,
+    triedDirections: [],
+    targetShipValue: null // Track which ship we're targeting
+  });
+  const [cheatMode, setCheatMode] = useState(false);
 
   // useEffects
   useEffect(() => {
@@ -104,7 +105,7 @@ export default function Game() {
     if (currentHoverIndex && gameState === GAME_STATES.PLACING_SHIPS) {
       previewPlayerShip(currentHoverIndex);
     }
-  }, [isVerticalPlacement])
+  }, [isVerticalPlacement]);
 
   // Event Handlers
   const handleRotateShip = (event) => {
@@ -113,31 +114,59 @@ export default function Game() {
     }
   };
 
+  const isShipDestroyed = (shipValue, squares) => {
+    // Find the ship to get its size
+    const ship = SHIPS.find(s => s.value === shipValue);
+    if (!ship) return false;
+    
+    // Count total hits on this ship
+    const totalHits = squares.filter(square => 
+      square === `X-${shipValue}` || square === `D-${shipValue}`
+    ).length;
+    
+    // Ship is destroyed if hits equal ship size
+    return totalHits === ship.size;
+  };
+
+  const markDestroyedShip = (shipValue, squares) => {
+    // Convert all hits on this ship to destroyed status
+    return squares.map(square => square === `X-${shipValue}` ? `D-${shipValue}` : square);
+  };
+
   const handleClickEnemySquare = (i) => {
     if (gameState !== GAME_STATES.PLAYER_TURN) {
       return;
     }
 
     // Check if square was already hit
-    if (enemySquares[i] === 'X' || enemySquares[i] === 'O') {
+    if (enemySquares[i] === 'O' || enemySquares[i]?.includes('X-') || enemySquares[i]?.includes('D-')) {
       return;
     }
 
     const newEnemySquares = [...enemySquares];
     // Check if hit or miss
     if (enemySquares[i] !== null) {
-      newEnemySquares[i] = 'X';
+      const shipValue = enemySquares[i];
+      newEnemySquares[i] = `X-${shipValue}`;
+      
+      // Check if this hit destroyed the ship
+      if (isShipDestroyed(shipValue, newEnemySquares)) {
+        const updatedSquares = markDestroyedShip(shipValue, newEnemySquares);
+        setEnemySquares(updatedSquares);
+      } else {
+        setEnemySquares(newEnemySquares);
+      }
     } else {
       newEnemySquares[i] = 'O';
+      setEnemySquares(newEnemySquares);
     }
 
-    setEnemySquares(newEnemySquares);
     setGameState(GAME_STATES.ENEMY_TURN);
 
     // Enemy's turn
     setTimeout(() => {
       handleEnemyTurn();
-    }, 2000);
+    }, 1000);
   };
 
   const placePlayerShip = () => {
@@ -237,7 +266,6 @@ export default function Game() {
       }
     }
 
-
     if(previewSquareIndicies.length != currentShip.size) {
       previewSquareIndicies.forEach(i => {
         newSquares[i] = `${currentShip.value}-preview-invalid`
@@ -286,76 +314,288 @@ export default function Game() {
     const newPlayerSquares = [...playerSquares];
     const newEnemyAI = { ...enemyAI };
     let validMove = false;
+    let attempts = 0;
+    const maxAttempts = 100; // Prevent infinite loops
 
-    while (!validMove) {
+    const isShipAtSquare = (index) => {
+      const ship = ships.find(ship => ship.value === newPlayerSquares[index]);
+      return ship ? { ...ship } : null;
+    };
 
-      if(enemyAI.lastHit && !enemyAI.successfulDirection) {
-        const validAdjacentSquares = [];
-        const row = Math.floor(enemyAI.lastHit / 10);
-        const col = enemyAI.lastHit % 10;
-        
-        // Check left square if not on left edge
-        if (col > 0) {
-          const leftIndex = enemyAI.lastHit - 1;
-          if (newPlayerSquares[leftIndex] !== 'X' && newPlayerSquares[leftIndex] !== 'O') {
-            validAdjacentSquares.push({ index: leftIndex, direction: 'left' });
-          }
-        }
-        
-        // Check right square if not on right edge
-        if (col < 9) {
-          const rightIndex = enemyAI.lastHit + 1;
-          if (newPlayerSquares[rightIndex] !== 'X' && newPlayerSquares[rightIndex] !== 'O') {
-            validAdjacentSquares.push({ index: rightIndex, direction: 'right' });
-          }
-        }
-        
-        // Check up square if not on top edge
-        if (row > 0) {
-          const upIndex = enemyAI.lastHit - 10;
-          if (newPlayerSquares[upIndex] !== 'X' && newPlayerSquares[upIndex] !== 'O') {
-            validAdjacentSquares.push({ index: upIndex, direction: 'up' });
-          }
-        }
-        
-        // Check down square if not on bottom edge
-        if (row < 9) {
-          const downIndex = enemyAI.lastHit + 10;
-          if (newPlayerSquares[downIndex] !== 'X' && newPlayerSquares[downIndex] !== 'O') {
-            validAdjacentSquares.push({ index: downIndex, direction: 'down' });
-          }
-        }
-
-        // If we have valid adjacent squares, choose one randomly
-        if (validAdjacentSquares.length > 0) {
-          const randomChoice = validAdjacentSquares[Math.floor(Math.random() * validAdjacentSquares.length)];
-          if (ships.find(ship => ship.value === newPlayerSquares[randomChoice.index])) {
-            newPlayerSquares[randomChoice.index] = 'X';
-            newEnemyAI.lastHit = randomChoice.index;
-            newEnemyAI.successfulDirection = randomChoice.direction;
-            newEnemyAI.hitStack.push(randomChoice.index);
-          } else {
-            newPlayerSquares[randomChoice.index] = 'O';
-          }
-          validMove = true;
-          continue;
-        }
+    const getOppositeDirection = (dir) => {
+      switch (dir) {
+        case 'right': return 'left';
+        case 'left': return 'right';
+        case 'down': return 'up';
+        case 'up': return 'down';
+        default: return null;
       }
+    };
 
-      const randomSquare = Math.floor(Math.random() * 100);
-      if (
-        newPlayerSquares[randomSquare] !== "X" &&
-        newPlayerSquares[randomSquare] !== "O"
-      ) {
-        if (
-          ships.find((ship) => ship.value === newPlayerSquares[randomSquare])
-        ) {
-          newPlayerSquares[randomSquare] = "X";
-          newEnemyAI.lastHit = randomSquare;
+    const getNextIndex = (index, direction) => {
+      const row = Math.floor(index / 10);
+      const col = index % 10;
+      
+      switch (direction) {
+        case 'right':
+          return col < 9 ? index + 1 : -1;
+        case 'left':
+          return col > 0 ? index - 1 : -1;
+        case 'down':
+          return row < 9 ? index + 10 : -1;
+        case 'up':
+          return row > 0 ? index - 10 : -1;
+        default:
+          return -1;
+      }
+    };
+
+    const isSquareHit = (index) => {
+      return newPlayerSquares[index]?.includes('X-') || 
+             newPlayerSquares[index]?.includes('D-') || 
+             newPlayerSquares[index] === 'O';
+    };
+
+    while (!validMove && attempts < maxAttempts) {
+      attempts++;
+      // If we have a current direction, continue in that direction
+      if (enemyAI.currentDirection && enemyAI.hitStack.length > 0) {
+        const lastHit = enemyAI.hitStack[enemyAI.hitStack.length - 1];
+        const nextIndex = getNextIndex(lastHit, enemyAI.currentDirection);
+
+        // If we hit an edge or already hit square
+        if (nextIndex === -1 || isSquareHit(nextIndex)) {
+          // Try opposite direction from first hit
+          const oppositeDir = getOppositeDirection(enemyAI.currentDirection);
+          if (!enemyAI.triedDirections.includes(oppositeDir)) {
+            newEnemyAI.currentDirection = oppositeDir;
+            newEnemyAI.triedDirections.push(oppositeDir);
+            newEnemyAI.hitStack = [enemyAI.firstHit];
+            continue;
+          } else {
+            // If we've tried both directions but haven't destroyed the ship,
+            // keep the hit stack and try new directions
+            if (newEnemyAI.targetShipValue && 
+                !isShipDestroyed(newEnemyAI.targetShipValue, newPlayerSquares)) {
+              newEnemyAI.currentDirection = null;
+              continue;
+            }
+            // Otherwise reset and start new search
+            newEnemyAI.firstHit = null;
+            newEnemyAI.hitStack = [];
+            newEnemyAI.currentDirection = null;
+            newEnemyAI.triedDirections = [];
+            newEnemyAI.targetShipValue = null;
+            continue;
+          }
+        }
+
+        // Try the next square in current direction
+        const shipAtSquare = isShipAtSquare(nextIndex);
+        if (shipAtSquare) {
+          const shipValue = shipAtSquare.value;
+          newPlayerSquares[nextIndex] = `X-${shipValue}`;
+          newEnemyAI.hitStack.push(nextIndex);
+          
+          // If we hit a different ship than we were targeting
+          if (newEnemyAI.targetShipValue && shipValue !== newEnemyAI.targetShipValue) {
+            // Save this hit for later
+            newEnemyAI.currentDirection = null;
+            newEnemyAI.triedDirections = [];
+          } else {
+            newEnemyAI.targetShipValue = shipValue;
+          }
+          
+          // Check if ship is destroyed
+          if (isShipDestroyed(shipValue, newPlayerSquares)) {
+            // Mark all hits as destroyed
+            for (let i = 0; i < newPlayerSquares.length; i++) {
+              if (newPlayerSquares[i] === `X-${shipValue}`) {
+                newPlayerSquares[i] = `D-${shipValue}`;
+              }
+            }
+            // Only reset if this was our target ship
+            if (shipValue === newEnemyAI.targetShipValue) {
+              newEnemyAI.firstHit = null;
+              newEnemyAI.hitStack = [];
+              newEnemyAI.currentDirection = null;
+              newEnemyAI.triedDirections = [];
+              newEnemyAI.targetShipValue = null;
+            }
+          }
         } else {
-          newPlayerSquares[randomSquare] = "O";
+          newPlayerSquares[nextIndex] = 'O';
+          // Try opposite direction from first hit
+          const oppositeDir = getOppositeDirection(enemyAI.currentDirection);
+          if (!enemyAI.triedDirections.includes(oppositeDir)) {
+            newEnemyAI.currentDirection = oppositeDir;
+            newEnemyAI.triedDirections.push(oppositeDir);
+            newEnemyAI.hitStack = [enemyAI.firstHit];
+          } else {
+            // If we've tried both directions but haven't destroyed the ship,
+            // keep the hit stack and try new directions
+            if (newEnemyAI.targetShipValue && 
+                !isShipDestroyed(newEnemyAI.targetShipValue, newPlayerSquares)) {
+              newEnemyAI.currentDirection = null;
+            } else {
+              // Otherwise reset and start new search
+              newEnemyAI.firstHit = null;
+              newEnemyAI.hitStack = [];
+              newEnemyAI.currentDirection = null;
+              newEnemyAI.triedDirections = [];
+              newEnemyAI.targetShipValue = null;
+            }
+          }
         }
         validMove = true;
+        continue;
+      }
+
+      // Try adjacent squares if we have a hit but no current direction
+      if (enemyAI.hitStack.length > 0 && !enemyAI.currentDirection) {
+        // Randomize direction order
+        const allDirections = ['right', 'left', 'down', 'up'];
+        const directions = allDirections
+          .sort(() => Math.random() - 0.5) // Randomize order
+          .filter(dir => !enemyAI.triedDirections.includes(dir));
+        
+        for (const direction of directions) {
+          const nextIndex = getNextIndex(enemyAI.firstHit, direction);
+          if (nextIndex >= 0 && !isSquareHit(nextIndex)) {
+            const shipAtSquare = isShipAtSquare(nextIndex);
+            if (shipAtSquare) {
+              const shipValue = shipAtSquare.value;
+              newPlayerSquares[nextIndex] = `X-${shipValue}`;
+              newEnemyAI.hitStack.push(nextIndex);
+              newEnemyAI.currentDirection = direction;
+              newEnemyAI.triedDirections.push(direction);
+              
+              // If we hit a different ship than we were targeting
+              if (newEnemyAI.targetShipValue && shipValue !== newEnemyAI.targetShipValue) {
+                // Save this hit for later
+                newEnemyAI.currentDirection = null;
+                newEnemyAI.triedDirections = [];
+              } else {
+                newEnemyAI.targetShipValue = shipValue;
+              }
+              
+              // Check if ship is destroyed
+              if (isShipDestroyed(shipValue, newPlayerSquares)) {
+                // Mark all hits as destroyed
+                for (let i = 0; i < newPlayerSquares.length; i++) {
+                  if (newPlayerSquares[i] === `X-${shipValue}`) {
+                    newPlayerSquares[i] = `D-${shipValue}`;
+                  }
+                }
+                // Only reset if this was our target ship
+                if (shipValue === newEnemyAI.targetShipValue) {
+                  newEnemyAI.firstHit = null;
+                  newEnemyAI.hitStack = [];
+                  newEnemyAI.currentDirection = null;
+                  newEnemyAI.triedDirections = [];
+                  newEnemyAI.targetShipValue = null;
+                }
+              }
+            } else {
+              newPlayerSquares[nextIndex] = 'O';
+              newEnemyAI.triedDirections.push(direction);
+            }
+            validMove = true;
+            break;
+          }
+        }
+        
+        if (validMove) continue;
+        
+        // If no valid directions left but haven't destroyed target ship,
+        // try a different starting point from our hits
+        if (newEnemyAI.targetShipValue && 
+            !isShipDestroyed(newEnemyAI.targetShipValue, newPlayerSquares)) {
+          newEnemyAI.firstHit = newEnemyAI.hitStack[0];
+          newEnemyAI.triedDirections = [];
+          continue;
+        }
+        
+        // Otherwise reset and start new search
+        newEnemyAI.firstHit = null;
+        newEnemyAI.hitStack = [];
+        newEnemyAI.currentDirection = null;
+        newEnemyAI.triedDirections = [];
+        newEnemyAI.targetShipValue = null;
+      }
+
+      // Random shot if no hits to follow up on
+      if (!validMove) {
+        // Try up to 10 times to find an unhit square
+        let foundValidSquare = false;
+        for (let i = 0; i < 10; i++) {
+          const randomSquare = Math.floor(Math.random() * 100);
+          if (!isSquareHit(randomSquare)) {
+            foundValidSquare = true;
+          const shipAtSquare = isShipAtSquare(randomSquare);
+          if (shipAtSquare) {
+            const shipValue = shipAtSquare.value;
+            newPlayerSquares[randomSquare] = `X-${shipValue}`;
+            newEnemyAI.firstHit = randomSquare;
+            newEnemyAI.hitStack = [randomSquare];
+            newEnemyAI.targetShipValue = shipValue;
+            
+            // Check if ship is destroyed
+            if (isShipDestroyed(shipValue, newPlayerSquares)) {
+              // Mark all hits as destroyed
+              for (let i = 0; i < newPlayerSquares.length; i++) {
+                if (newPlayerSquares[i] === `X-${shipValue}`) {
+                  newPlayerSquares[i] = `D-${shipValue}`;
+                }
+              }
+              // Reset AI state to look for new ships
+              newEnemyAI.firstHit = null;
+              newEnemyAI.hitStack = [];
+              newEnemyAI.currentDirection = null;
+              newEnemyAI.triedDirections = [];
+              newEnemyAI.targetShipValue = null;
+            }
+          } else {
+            newPlayerSquares[randomSquare] = 'O';
+          }
+            validMove = true;
+            break;
+          }
+        }
+        
+        // If we couldn't find a valid square after 10 tries,
+        // systematically search for the first unhit square
+        if (!foundValidSquare) {
+          for (let i = 0; i < 100; i++) {
+            if (!isSquareHit(i)) {
+              const shipAtSquare = isShipAtSquare(i);
+              if (shipAtSquare) {
+                const shipValue = shipAtSquare.value;
+                newPlayerSquares[i] = `X-${shipValue}`;
+                newEnemyAI.firstHit = i;
+                newEnemyAI.hitStack = [i];
+                newEnemyAI.targetShipValue = shipValue;
+                
+                if (isShipDestroyed(shipValue, newPlayerSquares)) {
+                  for (let j = 0; j < newPlayerSquares.length; j++) {
+                    if (newPlayerSquares[j] === `X-${shipValue}`) {
+                      newPlayerSquares[j] = `D-${shipValue}`;
+                    }
+                  }
+                  newEnemyAI.firstHit = null;
+                  newEnemyAI.hitStack = [];
+                  newEnemyAI.currentDirection = null;
+                  newEnemyAI.triedDirections = [];
+                  newEnemyAI.targetShipValue = null;
+                }
+              } else {
+                newPlayerSquares[i] = 'O';
+              }
+              validMove = true;
+              break;
+            }
+          }
+        }
       }
     }
 
@@ -388,10 +628,19 @@ export default function Game() {
         {/* Enemy Board Section */}
         <div className="board-container">
           <h2 className="player-text">Enemy</h2>
-          <EnemyBoard
-            squares={enemySquares}
-            onSquareClick={handleClickEnemySquare}
-          />
+          <div>
+            <button 
+              className="mb-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
+              onClick={() => setCheatMode(prev => !prev)}
+            >
+              {cheatMode ? "Hide Enemy Ships" : "Show Enemy Ships"}
+            </button>
+            <EnemyBoard
+              squares={enemySquares}
+              onSquareClick={handleClickEnemySquare}
+              cheatMode={cheatMode}
+            />
+          </div>
         </div>
       </div>
       <div className="game-status">{getGameStatusText()}</div>

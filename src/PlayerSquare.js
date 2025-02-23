@@ -1,12 +1,27 @@
 export default function PlayerSquare({ value, onClick, onMouseEnter }) {
-
-  const displayValue = value?.split("-")[0] || null;
-  const isPreview = value?.includes('-preview');
-  const isInvalid = value?.includes('-invalid');
+  let displayValue = '';
+  let className = "grid-square";
+  
+  if (value?.includes('-preview')) {
+    className += " preview";
+    displayValue = value.split("-")[0];
+  } else if (value?.includes('-invalid')) {
+    className += " invalid";
+    displayValue = value.split("-")[0];
+  } else if (value === 'O') {
+    displayValue = 'O';
+  } else if (value?.startsWith('X-')) {
+    displayValue = 'X';
+  } else if (value?.startsWith('D-')) {
+    displayValue = 'X';
+    className += " destroyed-ship";
+  } else {
+    displayValue = value;
+  }
 
   return (
     <button
-      className={`grid-square ${isPreview ? 'preview' : ''} ${isInvalid ? 'invalid' : ''}`}
+      className={className}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
     >

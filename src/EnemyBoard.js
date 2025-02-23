@@ -1,12 +1,13 @@
 import EnemySquare from "./EnemySquare";
 
-export default function EnemyBoard({ squares, onSquareClick }) {
+export default function EnemyBoard({ squares, onSquareClick, cheatMode }) {
   const renderSquare = (i) => {
     return (
       <EnemySquare
         key={i}
         value={squares[i]}
         onClick={() => onSquareClick(i)}
+        cheatMode={cheatMode}
       />
     );
   };
