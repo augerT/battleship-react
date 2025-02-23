@@ -82,6 +82,7 @@ export default function Game() {
   const [currentHoverIndex, setCurrentHoverIndex] = useState(null);
   const [isVerticalPlacement, setIsVerticalPlacement] = useState(false);
   const [currentShip, setCurrentShip] = useState(ships[0]);
+  const [winner, setWinner] = useState(null);
   const [enemyAI, setEnemyAI] = useState({ 
     firstHit: null,
     hitStack: [],
@@ -133,6 +134,14 @@ export default function Game() {
     return squares.map(square => square === `X-${shipValue}` ? `D-${shipValue}` : square);
   };
 
+  const checkAllShipsDestroyed = (squares) => {
+    // Count all ship squares that are marked as destroyed
+    const destroyedCount = squares.filter(square => square?.startsWith('D-')).length;
+    // Count total ship squares (sum of all ship sizes)
+    const totalShipSquares = SHIPS.reduce((sum, ship) => sum + ship.size, 0);
+    return destroyedCount === totalShipSquares;
+  };
+
   const handleClickEnemySquare = (i) => {
     if (gameState !== GAME_STATES.PLAYER_TURN) {
       return;
@@ -153,6 +162,13 @@ export default function Game() {
       if (isShipDestroyed(shipValue, newEnemySquares)) {
         const updatedSquares = markDestroyedShip(shipValue, newEnemySquares);
         setEnemySquares(updatedSquares);
+        
+        // Check if all enemy ships are destroyed
+        if (checkAllShipsDestroyed(updatedSquares)) {
+          setWinner('player');
+          setGameState(GAME_STATES.GAME_OVER);
+          return;
+        }
       } else {
         setEnemySquares(newEnemySquares);
       }
@@ -303,7 +319,7 @@ export default function Game() {
       case GAME_STATES.ENEMY_TURN:
         return "Enemy's turn";
       case GAME_STATES.GAME_OVER:
-        return "Game Over!";
+        return winner === 'player' ? "Victory! You've sunk all enemy ships!" : "Game Over! The enemy has destroyed your fleet!";
       default:
         return "";
     }
@@ -311,6 +327,11 @@ export default function Game() {
 
   // Game Helper Functions
   const handleEnemyTurn = () => {
+    // If game is over, don't continue
+    if (gameState === GAME_STATES.GAME_OVER) {
+      return;
+    }
+
     const newPlayerSquares = [...playerSquares];
     const newEnemyAI = { ...enemyAI };
     let validMove = false;
@@ -414,6 +435,15 @@ export default function Game() {
                 newPlayerSquares[i] = `D-${shipValue}`;
               }
             }
+
+            // Check if all player ships are destroyed
+            if (checkAllShipsDestroyed(newPlayerSquares)) {
+              setWinner('enemy');
+              setGameState(GAME_STATES.GAME_OVER);
+              setPlayerSquares(newPlayerSquares);
+              return;
+            }
+
             // Only reset if this was our target ship
             if (shipValue === newEnemyAI.targetShipValue) {
               newEnemyAI.firstHit = null;
@@ -487,6 +517,15 @@ export default function Game() {
                     newPlayerSquares[i] = `D-${shipValue}`;
                   }
                 }
+
+                // Check if all player ships are destroyed
+                if (checkAllShipsDestroyed(newPlayerSquares)) {
+                  setWinner('enemy');
+                  setGameState(GAME_STATES.GAME_OVER);
+                  setPlayerSquares(newPlayerSquares);
+                  return;
+                }
+
                 // Only reset if this was our target ship
                 if (shipValue === newEnemyAI.targetShipValue) {
                   newEnemyAI.firstHit = null;
@@ -532,32 +571,41 @@ export default function Game() {
           const randomSquare = Math.floor(Math.random() * 100);
           if (!isSquareHit(randomSquare)) {
             foundValidSquare = true;
-          const shipAtSquare = isShipAtSquare(randomSquare);
-          if (shipAtSquare) {
-            const shipValue = shipAtSquare.value;
-            newPlayerSquares[randomSquare] = `X-${shipValue}`;
-            newEnemyAI.firstHit = randomSquare;
-            newEnemyAI.hitStack = [randomSquare];
-            newEnemyAI.targetShipValue = shipValue;
-            
-            // Check if ship is destroyed
-            if (isShipDestroyed(shipValue, newPlayerSquares)) {
-              // Mark all hits as destroyed
-              for (let i = 0; i < newPlayerSquares.length; i++) {
-                if (newPlayerSquares[i] === `X-${shipValue}`) {
-                  newPlayerSquares[i] = `D-${shipValue}`;
+            const shipAtSquare = isShipAtSquare(randomSquare);
+            if (shipAtSquare) {
+              const shipValue = shipAtSquare.value;
+              newPlayerSquares[randomSquare] = `X-${shipValue}`;
+              newEnemyAI.firstHit = randomSquare;
+              newEnemyAI.hitStack = [randomSquare];
+              newEnemyAI.targetShipValue = shipValue;
+              
+              // Check if ship is destroyed
+              if (isShipDestroyed(shipValue, newPlayerSquares)) {
+                // Mark all hits as destroyed
+                for (let i = 0; i < newPlayerSquares.length; i++) {
+                  if (newPlayerSquares[i] === `X-${shipValue}`) {
+                    newPlayerSquares[i] = `D-${shipValue}`;
+                  }
                 }
+
+                // Check if all player ships are destroyed
+                if (checkAllShipsDestroyed(newPlayerSquares)) {
+                  setWinner('enemy');
+                  setGameState(GAME_STATES.GAME_OVER);
+                  setPlayerSquares(newPlayerSquares);
+                  return;
+                }
+
+                // Reset AI state to look for new ships
+                newEnemyAI.firstHit = null;
+                newEnemyAI.hitStack = [];
+                newEnemyAI.currentDirection = null;
+                newEnemyAI.triedDirections = [];
+                newEnemyAI.targetShipValue = null;
               }
-              // Reset AI state to look for new ships
-              newEnemyAI.firstHit = null;
-              newEnemyAI.hitStack = [];
-              newEnemyAI.currentDirection = null;
-              newEnemyAI.triedDirections = [];
-              newEnemyAI.targetShipValue = null;
+            } else {
+              newPlayerSquares[randomSquare] = 'O';
             }
-          } else {
-            newPlayerSquares[randomSquare] = 'O';
-          }
             validMove = true;
             break;
           }
@@ -582,6 +630,15 @@ export default function Game() {
                       newPlayerSquares[j] = `D-${shipValue}`;
                     }
                   }
+
+                  // Check if all player ships are destroyed
+                  if (checkAllShipsDestroyed(newPlayerSquares)) {
+                    setWinner('enemy');
+                    setGameState(GAME_STATES.GAME_OVER);
+                    setPlayerSquares(newPlayerSquares);
+                    return;
+                  }
+
                   newEnemyAI.firstHit = null;
                   newEnemyAI.hitStack = [];
                   newEnemyAI.currentDirection = null;
@@ -629,12 +686,6 @@ export default function Game() {
         <div className="board-container">
           <h2 className="player-text">Enemy</h2>
           <div>
-            <button 
-              className="mb-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
-              onClick={() => setCheatMode(prev => !prev)}
-            >
-              {cheatMode ? "Hide Enemy Ships" : "Show Enemy Ships"}
-            </button>
             <EnemyBoard
               squares={enemySquares}
               onSquareClick={handleClickEnemySquare}
@@ -644,6 +695,13 @@ export default function Game() {
         </div>
       </div>
       <div className="game-status">{getGameStatusText()}</div>
+      <div>
+        <button
+          className="mb-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
+          onClick={() => setCheatMode((prev) => !prev)}
+        > Cheat Mode
+        </button>
+      </div>
     </div>
   );
 }
